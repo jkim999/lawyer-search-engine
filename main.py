@@ -2,7 +2,10 @@ import argparse
 import json
 import sys
 import sqlite3
-from typing import List, Dict, Any
+import hashlib
+import time
+from typing import List, Dict, Any, Optional
+from collections import OrderedDict
 from database import init_database, create_indexes, load_school_aliases
 from query_parser import parse_simple_query
 from search import compile_ast_to_sql, execute_query, explain_query
@@ -12,6 +15,64 @@ from scraping_utils import parse_page, parse_text
 from query_classifier import classify_query
 from semantic_search import semantic_search
 from llm_filter import parallel_llm_filter
+from keyword_filter import smart_filter_candidates
+
+
+# Query result cache (LRU cache with TTL)
+class QueryCache:
+    """Simple LRU cache for query results with time-to-live."""
+
+    def __init__(self, max_size: int = 100, ttl_seconds: int = 3600):
+        self.cache = OrderedDict()
+        self.timestamps = {}
+        self.max_size = max_size
+        self.ttl_seconds = ttl_seconds
+
+    def _get_key(self, query: str, db_path: str) -> str:
+        """Generate cache key from query and db path."""
+        combined = f"{query.lower().strip()}:{db_path}"
+        return hashlib.md5(combined.encode()).hexdigest()
+
+    def get(self, query: str, db_path: str) -> Optional[List[Dict[str, Any]]]:
+        """Get cached results if they exist and are not expired."""
+        key = self._get_key(query, db_path)
+
+        if key not in self.cache:
+            return None
+
+        # Check if expired
+        if time.time() - self.timestamps[key] > self.ttl_seconds:
+            # Remove expired entry
+            del self.cache[key]
+            del self.timestamps[key]
+            return None
+
+        # Move to end (most recently used)
+        self.cache.move_to_end(key)
+        return self.cache[key]
+
+    def set(self, query: str, db_path: str, results: List[Dict[str, Any]]) -> None:
+        """Store results in cache."""
+        key = self._get_key(query, db_path)
+
+        # Remove oldest if at capacity
+        if len(self.cache) >= self.max_size and key not in self.cache:
+            oldest_key = next(iter(self.cache))
+            del self.cache[oldest_key]
+            del self.timestamps[oldest_key]
+
+        self.cache[key] = results
+        self.timestamps[key] = time.time()
+        self.cache.move_to_end(key)
+
+    def clear(self) -> None:
+        """Clear all cached results."""
+        self.cache.clear()
+        self.timestamps.clear()
+
+
+# Global query cache instance
+_query_cache = QueryCache(max_size=100, ttl_seconds=3600)
 
 
 def passes_criterion(lawyer_url: str, query: str) -> bool:
@@ -44,8 +105,8 @@ def passes_criterion(lawyer_url: str, query: str) -> bool:
     return response.split('<answer>')[1].split('</answer>')[0].strip() == 'Pass'
 
 
-def main(query: str, db_path: str = 'lawyers.db', show_sql: bool = False, 
-         format_output: str = 'table') -> List[Dict[str, Any]]:
+def main(query: str, db_path: str = 'lawyers.db', show_sql: bool = False,
+         format_output: str = 'table', use_cache: bool = True) -> List[Dict[str, Any]]:
     """
     Takes in a string as a query and returns the list of lawyers.
 
@@ -54,10 +115,19 @@ def main(query: str, db_path: str = 'lawyers.db', show_sql: bool = False,
         db_path (str): Path to SQLite database.
         show_sql (bool): Whether to show compiled SQL and execution plan.
         format_output (str): Output format ('json' or 'table').
+        use_cache (bool): Whether to use query result caching.
 
     Returns:
         list: A list of lawyers matching the query.
     """
+    # Check cache first
+    if use_cache:
+        cached_results = _query_cache.get(query, db_path)
+        if cached_results is not None:
+            if show_sql:
+                print("✓ Returning cached results")
+            return cached_results
+
     # Classify the query
     query_type = classify_query(query)
     
@@ -94,9 +164,13 @@ def main(query: str, db_path: str = 'lawyers.db', show_sql: bool = False,
         
         # Execute query
         results = execute_query(conn, sql, params)
-        
+
         conn.close()
-        
+
+        # Cache results before returning
+        if use_cache:
+            _query_cache.set(query, db_path, results)
+
     else:
         # Complex query flow
         if show_sql:
@@ -104,8 +178,26 @@ def main(query: str, db_path: str = 'lawyers.db', show_sql: bool = False,
             print("=" * 80)
         
         # Step 1: Semantic search to find candidates
+        # Adaptive k: more candidates for generic queries, fewer for specific ones
+        from keyword_filter import extract_keywords
+        keywords = extract_keywords(query)
+
+        # Determine k based on keyword specificity
+        if len(keywords) >= 3:
+            # Very specific query - need more candidates to ensure coverage
+            k = 30
+        elif len(keywords) >= 1:
+            # Moderately specific - standard candidate pool
+            k = 40
+        else:
+            # Generic query - cast wider net
+            k = 50
+
+        if show_sql:
+            print(f"Using k={k} for semantic search (query has {len(keywords)} keywords)")
+
         try:
-            candidates = semantic_search(query, k=50, db_path=db_path)
+            candidates = semantic_search(query, k=k, db_path=db_path)
         except ValueError as e:
             # Handle missing embeddings error
             error_msg = str(e)
@@ -132,14 +224,27 @@ def main(query: str, db_path: str = 'lawyers.db', show_sql: bool = False,
         
         # Extract lawyer IDs from candidates
         candidate_ids = [lawyer_id for lawyer_id, score in candidates]
-        
+
+        if show_sql:
+            print(f"Semantic search returned {len(candidate_ids)} candidates")
+
+        # Step 1.5: Keyword pre-filtering to reduce LLM calls
+        filtered_ids = smart_filter_candidates(candidate_ids, query, db_path)
+
+        if show_sql:
+            print(f"Keyword filtering reduced to {len(filtered_ids)} candidates")
+
         # Step 2: LLM filtering for precise matching
-        results = parallel_llm_filter(candidate_ids, query, db_path=db_path)
-        
+        results = parallel_llm_filter(filtered_ids, query, db_path=db_path)
+
         if show_sql:
             print(f"LLM filtering returned {len(results)} matches")
             print("=" * 80)
-    
+
+        # Cache results before returning
+        if use_cache:
+            _query_cache.set(query, db_path, results)
+
     return results
 
 

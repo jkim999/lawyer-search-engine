@@ -89,31 +89,32 @@ def extract_experience_text(scraped_content: str) -> Optional[str]:
     return None
 
 
-def store_embedding(conn: sqlite3.Connection, lawyer_id: int, 
-                   content: str, embedding: List[float]) -> None:
+def store_embedding(conn: sqlite3.Connection, lawyer_id: int,
+                   content: str, embedding: List[float], parsed_text: Optional[str] = None) -> None:
     """
     Store an embedding in the database.
-    
+
     Args:
         conn: Database connection
         lawyer_id: ID of the lawyer
         content: The text content that was embedded
         embedding: The embedding vector
+        parsed_text: Full parsed text from lawyer profile (for LLM filtering)
     """
     cursor = conn.cursor()
-    
+
     # Convert embedding to binary format
     embedding_blob = pickle.dumps(np.array(embedding, dtype=np.float32))
-    
+
     # Delete existing embedding if any
     cursor.execute('DELETE FROM experience_embeddings WHERE lawyer_id = ?', (lawyer_id,))
-    
+
     # Insert new embedding
     cursor.execute('''
-        INSERT INTO experience_embeddings (lawyer_id, content, embedding)
-        VALUES (?, ?, ?)
-    ''', (lawyer_id, content, embedding_blob))
-    
+        INSERT INTO experience_embeddings (lawyer_id, content, embedding, parsed_text)
+        VALUES (?, ?, ?, ?)
+    ''', (lawyer_id, content, embedding_blob, parsed_text))
+
     conn.commit()
 
 
@@ -152,32 +153,33 @@ def generate_embeddings_for_all_lawyers(db_path: str = 'lawyers.db',
         for lawyer in batch:
             lawyer_id = lawyer['id']
             url = lawyer['url']
-            
+
             try:
                 # Scrape and extract experience
                 raw_html = parse_page(url)
                 experience_text = extract_experience_text(raw_html)
-                
+
                 if experience_text:
                     texts_to_embed.append(experience_text)
-                    lawyer_data.append((lawyer_id, experience_text))
+                    # Store both experience text and full parsed text for LLM filtering
+                    lawyer_data.append((lawyer_id, experience_text, raw_html))
                     lawyers_with_experience += 1
-                
+
                 processed += 1
-                
+
             except Exception as e:
                 errors += 1
                 print(f"\nError processing lawyer {lawyer_id}: {e}")
                 continue
-        
+
         # Generate embeddings for this batch
         if texts_to_embed:
             try:
                 embeddings = get_embedding(texts_to_embed, size=EMBEDDING_MODEL_SMALL)
-                
-                # Store embeddings
-                for (lawyer_id, content), embedding in zip(lawyer_data, embeddings):
-                    store_embedding(conn, lawyer_id, content, embedding)
+
+                # Store embeddings with full parsed text
+                for (lawyer_id, content, raw_html), embedding in zip(lawyer_data, embeddings):
+                    store_embedding(conn, lawyer_id, content, embedding, raw_html)
                     
             except Exception as e:
                 print(f"\nError generating embeddings for batch: {e}")
