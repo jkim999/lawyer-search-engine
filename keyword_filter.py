@@ -92,22 +92,27 @@ def keyword_filter_candidates(candidate_ids: List[int], query: str,
     filtered_ids = []
 
     for lawyer_id in candidate_ids:
-        # Get cached parsed text
-        cursor.execute('''
-            SELECT parsed_text, content
-            FROM experience_embeddings
-            WHERE lawyer_id = ?
-        ''', (lawyer_id,))
+        # Get cached parsed text (if available)
+        try:
+            cursor.execute('''
+                SELECT parsed_text, content
+                FROM experience_embeddings
+                WHERE lawyer_id = ?
+            ''', (lawyer_id,))
 
-        row = cursor.fetchone()
-        if not row:
-            # No cached text, keep in candidates (fallback)
+            row = cursor.fetchone()
+            if not row:
+                # No embedding data, keep in candidates (fallback)
+                filtered_ids.append(lawyer_id)
+                continue
+
+            # Combine parsed text and experience content (parsed_text might be NULL)
+            text = (row['parsed_text'] or '') + ' ' + (row['content'] or '')
+            text_lower = text.lower()
+        except Exception:
+            # If column doesn't exist or any error, keep candidate (fallback)
             filtered_ids.append(lawyer_id)
             continue
-
-        # Combine parsed text and experience content
-        text = (row['parsed_text'] or '') + ' ' + (row['content'] or '')
-        text_lower = text.lower()
 
         # Count keyword matches
         matches = sum(1 for keyword in keywords if keyword in text_lower)
