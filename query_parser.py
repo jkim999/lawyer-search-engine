@@ -144,34 +144,43 @@ def parse_simple_query(query: str) -> List[Dict[str, Any]]:
             break
     
     # Handle title queries
-    title_patterns = [
-        r'partners?',
-        r'associates?',
-        r'counsel',
-        r'title\s+is\s+([a-z\s]+)',
+    # Check more specific titles first (longest matches first)
+    title_mappings = [
+        (r'\bmanaging\s+partners?\b', 'Managing Partner'),
+        (r'\bsenior\s+partners?\b', 'Senior Partner'),
+        (r'\bsenior\s+counsel\b', 'Senior Counsel'),
+        (r'\bof\s+counsel\b', 'Of Counsel'),
+        (r'\bco-?heads?\b', 'Co-Head'),
+        (r'\bpartners?\b', 'Partner'),
+        (r'\bcounsel\b', 'Counsel'),
+        (r'\bassociates?\b', 'Associate'),
+        (r'\bheads?\b', 'Head'),
     ]
-    
-    for pattern in title_patterns:
+
+    for pattern, title in title_mappings:
         match = re.search(pattern, query_lower)
         if match:
-            if 'partner' in query_lower:
-                title = 'Partner'
-            elif 'associate' in query_lower:
-                title = 'Associate'
-            elif 'counsel' in query_lower:
-                title = 'Counsel'
-            else:
-                title = match.group(1).title() if match.groups() else None
-            
-            if title:
-                ast.append({
-                    'field': 'title',
-                    'op': 'eq',
-                    'value': title
-                })
-                query = re.sub(pattern, '', query, flags=re.IGNORECASE).strip()
-                query_lower = query.lower()
+            ast.append({
+                'field': 'title',
+                'op': 'eq',
+                'value': title
+            })
+            query = re.sub(pattern, '', query, flags=re.IGNORECASE).strip()
+            query_lower = query.lower()
             break
+
+    # Also handle "title is X" pattern
+    title_is_pattern = r'title\s+is\s+([a-z\s\-]+)'
+    match = re.search(title_is_pattern, query_lower)
+    if match and not any(node.get('field') == 'title' for node in ast):
+        title_value = match.group(1).strip().title()
+        ast.append({
+            'field': 'title',
+            'op': 'eq',
+            'value': title_value
+        })
+        query = re.sub(title_is_pattern, '', query, flags=re.IGNORECASE).strip()
+        query_lower = query.lower()
     
     # Handle region queries
     region_patterns = [

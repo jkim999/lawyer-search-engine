@@ -62,6 +62,16 @@ VALID_INDUSTRIES = {
     'Tech, Media & Telecom',
 }
 
+# Official Davis Polk regions (only in capabilities section)
+VALID_REGIONS = {
+    'Asia',
+    'China',
+    'Japan',
+    'Europe',
+    'Latin America',
+    'Israel',
+}
+
 
 def parse_page(url: str) -> str:
     """
@@ -159,8 +169,18 @@ def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
     cleaned_lines = [line.strip() for line in lines if line.strip()]
     
     # Davis Polk specific title keywords
-    title_keywords = ['Partner', 'Counsel', 'Associate', 'Of Counsel', 'Senior Partner', 
-                      'Managing Partner', 'Co-Head', 'Head']
+    # Sorted by length (longest first) to match more specific titles before general ones
+    title_keywords = [
+        'Managing Partner',
+        'Senior Partner',
+        'Senior Counsel',
+        'Of Counsel',
+        'Partner',
+        'Counsel',
+        'Associate',
+        'Co-Head',
+        'Head',
+    ]
     
     # Blacklist of text that should never be considered a name
     name_blacklist = {
@@ -336,50 +356,36 @@ def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
                 else:
                     result['clerkship'] += ', ' + line
     
-    # Parse Region - Only specific regions from Capabilities section
-    # Valid regions: Asia, China, Japan, Europe, Latin America, Israel
-    valid_regions = ['Asia', 'China', 'Japan', 'Europe', 'Latin America', 'Israel']
-    regions_found = []
-    
-    # Track all capability items between any "Capabilities" header and the next major section
+    # Parse Region - Only from Capabilities section (exact matches from VALID_REGIONS)
     in_capabilities = False
-    capability_items = []
-    
+    capabilities_text = []
+
     for i, line in enumerate(cleaned_lines):
-        # Start capturing when we see "Capabilities"
         if 'Capabilities' in line:
             in_capabilities = True
             continue
-        
-        # Stop when we hit a major section that's NOT a capability
-        if in_capabilities:
-            # These indicate we've left the capabilities section
-            stop_sections = ['Experience', 'Education', 'Insights', 'Languages', 
-                           'Prior experience', 'Clerkship', 'Qualifications', 
-                           'Back to', 'Download', 'Print']
-            if any(section in line for section in stop_sections):
-                # But check if this isn't just another "Capabilities" header
-                if 'Capabilities' not in line:
-                    in_capabilities = False
-                    continue
-        
-        # Collect capability items
+
+        # Stop at next major section
+        if in_capabilities and any(section in line for section in
+                                   ['Experience', 'Education', 'Insights', 'Languages',
+                                    'Prior experience', 'Clerkship', 'Qualifications',
+                                    'Back to', 'Download', 'Print']):
+            if 'Capabilities' not in line:
+                in_capabilities = False
+                continue
+
+        # Collect capabilities section text
         if in_capabilities and line:
-            # Skip obvious non-capability items
-            if not any(skip in line.lower() for skip in 
+            if not any(skip in line.lower() for skip in
                       ['view', 'see more', 'download', 'print', 'back to', 'address card']):
-                capability_items.append(line)
-    
-    # Now check for valid regions in the collected capability items
-    for item in capability_items:
-        for region in valid_regions:
-            if region in item:
-                if region not in regions_found:
-                    regions_found.append(region)
-    
-    # Set result based on what was found
-    if regions_found:
-        result['region'] = regions_found  # Always return as list
+                capabilities_text.append(line)
+
+    # Extract regions from capabilities section only
+    if capabilities_text:
+        capabilities_content = '\n'.join(capabilities_text)
+        regions_found = extract_from_valid_set(capabilities_content, VALID_REGIONS)
+        if regions_found:
+            result['region'] = regions_found
     
     # Parse Languages (less common in Davis Polk profiles but included for completeness)
     # Common languages to check for explicitly
