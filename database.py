@@ -109,6 +109,7 @@ def init_database(db_path: str = 'lawyers.db') -> sqlite3.Connection:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             lawyer_id INTEGER NOT NULL,
             content TEXT,
+            parsed_text TEXT,
             embedding BLOB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (lawyer_id) REFERENCES lawyers(id) ON DELETE CASCADE

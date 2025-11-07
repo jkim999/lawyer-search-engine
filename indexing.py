@@ -5,6 +5,8 @@ from typing import Dict, List, Optional, Tuple, Any
 from tqdm import tqdm
 from scraping_utils import parse_page, parse_text
 from database import init_database, upsert_lawyer, create_indexes, load_school_aliases, get_school_normalized
+from embedding_generator import extract_experience_text, store_embedding
+from llm_utils import get_embedding, EMBEDDING_MODEL_SMALL
 
 
 def degree_tokenizer(education_line: str) -> Dict[str, Any]:
@@ -163,19 +165,22 @@ def normalize_school_name(conn: sqlite3.Connection, school_name: str) -> str:
     return get_school_normalized(conn, school_name)
 
 
-def scrape_and_cache_lawyers(csv_file: str = 'lawyers.csv', 
+def scrape_and_cache_lawyers(csv_file: str = 'lawyers.csv',
                               db_path: str = 'lawyers.db',
                               store_html: bool = False,
+                              generate_embeddings: bool = True,
                               force_rescrape: bool = False) -> int:
     """
     Scrape all lawyer profiles, parse, and store in SQLite database.
-    
+    Optionally generates embeddings during scraping for efficiency.
+
     Args:
         csv_file: Path to lawyers.csv file
         db_path: Path to SQLite database
         store_html: Whether to store raw HTML (gzipped)
+        generate_embeddings: Whether to generate embeddings during scraping (recommended)
         force_rescrape: Whether to re-scrape even if lawyer exists
-        
+
     Returns:
         Number of lawyers processed
     """
@@ -236,11 +241,11 @@ def scrape_and_cache_lawyers(csv_file: str = 'lawyers.csv',
             
             for edu in educations:
                 cursor.execute('''
-                    INSERT INTO educations 
-                    (lawyer_id, degree_type, year, school_name, school_normalized, 
+                    INSERT INTO educations
+                    (lawyer_id, degree_type, year, school_name, school_normalized,
                      is_law_degree, honors, full_text)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (lawyer_id, 
+                ''', (lawyer_id,
                       edu.get('degree_type'),
                       edu.get('year'),
                       edu.get('school_name'),
@@ -248,7 +253,20 @@ def scrape_and_cache_lawyers(csv_file: str = 'lawyers.csv',
                       edu.get('is_law_degree', 0),
                       edu.get('honors'),
                       edu.get('full_text')))
-            
+
+            # Generate embedding if requested (while HTML is already in memory)
+            if generate_embeddings:
+                try:
+                    experience_text = extract_experience_text(raw_html)
+                    if experience_text:
+                        # Generate embedding for experience section
+                        embedding = get_embedding([experience_text], size=EMBEDDING_MODEL_SMALL)[0]
+                        # Store embedding with full parsed text for LLM filtering
+                        store_embedding(conn, lawyer_id, experience_text, embedding, raw_html)
+                except Exception as e:
+                    # Don't fail the whole scrape if embedding generation fails
+                    print(f"\nWarning: Failed to generate embedding for lawyer {lawyer_id}: {e}")
+
             conn.commit()
             processed += 1
             

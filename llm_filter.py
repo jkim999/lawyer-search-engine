@@ -11,23 +11,39 @@ from scraping_utils import parse_page
 from llm_utils import llm, MINI_MODEL
 
 
-def evaluate_lawyer_for_query(lawyer_id: int, lawyer_url: str, query: str, 
+def evaluate_lawyer_for_query(lawyer_id: int, lawyer_url: str, query: str,
                              db_path: str = 'lawyers.db') -> Tuple[int, bool, str]:
     """
     Evaluate if a lawyer matches a complex query using LLM.
-    
+
     Args:
         lawyer_id: ID of the lawyer
         lawyer_url: URL of the lawyer's profile
         query: The complex query to evaluate against
         db_path: Path to the database
-        
+
     Returns:
         Tuple of (lawyer_id, passes, reasoning)
     """
     try:
-        # Get the full profile text
-        profile_text = parse_page(lawyer_url)
+        # Try to get cached parsed text from database first
+        conn = init_database(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT parsed_text
+            FROM experience_embeddings
+            WHERE lawyer_id = ?
+        ''', (lawyer_id,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row and row['parsed_text']:
+            # Use cached parsed text (fast!)
+            profile_text = row['parsed_text']
+        else:
+            # Fallback to scraping if no cached text (backward compatibility)
+            profile_text = parse_page(lawyer_url)
         
         system_prompt = """You are evaluating whether a lawyer's profile matches a specific search query.
 
@@ -74,8 +90,8 @@ Does this lawyer's experience match the query?"""
         return lawyer_id, False, f"Error: {str(e)}"
 
 
-def parallel_llm_filter(lawyer_ids: List[int], query: str, 
-                       batch_size: int = 5, max_workers: int = 3,
+def parallel_llm_filter(lawyer_ids: List[int], query: str,
+                       batch_size: int = 15, max_workers: int = 15,
                        db_path: str = 'lawyers.db') -> List[Dict[str, Any]]:
     """
     Filter lawyer candidates using LLM in parallel batches.
@@ -138,7 +154,7 @@ def parallel_llm_filter(lawyer_ids: List[int], query: str,
             
             # Small delay between batches to respect rate limits
             if i + batch_size < len(lawyer_ids):
-                time.sleep(0.5)
+                time.sleep(0.1)  # Reduced from 0.5s - with caching we can be more aggressive
         
         # Collect results as they complete
         for future, info in futures:
