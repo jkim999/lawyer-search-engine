@@ -3,6 +3,65 @@ import re
 from bs4 import BeautifulSoup
 from typing import Dict, List, Optional, Union
 
+# Official Davis Polk practice areas
+VALID_PRACTICES = {
+    'Antitrust & Competition',
+    'Capital Markets',
+    'Civil Litigation',
+    'Corporate',
+    'Corporate Governance',
+    'Data Privacy & Cybersecurity',
+    'Derivatives & Structured Products',
+    'Environmental',
+    'Executive Compensation',
+    'Finance',
+    'Financial Institutions',
+    'Investment Management',
+    'IP & Commercial Transactions',
+    'IP Litigation',
+    'Liability Management & Special Opportunities',
+    'Litigation',
+    'Mergers & Acquisitions',
+    'Private Credit',
+    'Private Equity',
+    'Private Wealth',
+    'Public Company Advisory',
+    'Real Estate',
+    'Restructuring',
+    'Shareholder Activism Defense',
+    'Sponsor Finance',
+    'Tax',
+    'White Collar Defense & Investigations',
+}
+
+# Official Davis Polk offices
+VALID_OFFICES = {
+    'New York',
+    'Northern California',
+    'Washington DC',
+    'São Paulo',
+    'London',
+    'Brussels',
+    'Madrid',
+    'Hong Kong',
+    'Beijing',
+    'Tokyo',
+}
+
+# Official Davis Polk industries
+VALID_INDUSTRIES = {
+    'Artificial Intelligence',
+    'Cleantech',
+    'Consumer Products & Retail',
+    'Data Centers & Digital Infrastructure',
+    'Energy, Power & Infrastructure',
+    'Fintech & Cryptocurrency',
+    'Healthcare & Life Sciences',
+    'Industrials',
+    'Sports',
+    'Tech, Media & Telecom',
+}
+
 
 def parse_page(url: str) -> str:
     """
@@ -24,6 +83,25 @@ def parse_page(url: str) -> str:
         return soup.body.get_text()
     except requests.RequestException as e:
         raise requests.RequestException(f"Error fetching the page: {e}")
+
+def extract_from_valid_set(text: str, valid_set: set) -> List[str]:
+    """
+    Extract all items from a valid set that appear in the text.
+    Searches the entire text for exact matches (case-sensitive).
+
+    Args:
+        text: The text to search
+        valid_set: Set of valid values to look for
+
+    Returns:
+        List of found values
+    """
+    found = []
+    for item in valid_set:
+        if item in text:
+            found.append(item)
+    return found
+
 
 def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
     """
@@ -200,224 +278,18 @@ def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
             result['phone'] = phone_match.group(0).strip()
             break
     
-    # Parse Office Location (Davis Polk offices)
-    location_keywords = ['New York', 'Washington DC', 'Northern California', 'London', 
-                        'Paris', 'Madrid', 'Hong Kong', 'Beijing', 'Tokyo', 'São Paulo']
-    
-    for location in location_keywords:
-        if location in text_content:
-            result['office_location'] = location
+    # Parse Office Location - Search entire page for exact matches
+    for office in VALID_OFFICES:
+        if office in text_content:
+            result['office_location'] = office
             break
     
-    # Parse Practice Type / Capabilities
-    # Define the official Davis Polk practice areas
-    official_practice_areas = [
-        'Antitrust & Competition',
-        'Capital Markets',
-        'Civil Litigation',
-        'Corporate',
-        'Corporate Governance',
-        'Data Privacy & Cybersecurity',
-        'Derivatives & Structured Products',
-        'Environmental',
-        'Executive Compensation',
-        'Finance',
-        'Financial Institutions',
-        'Investment Management',
-        'IP & Commercial Transactions',
-        'IP Litigation',
-        'Liability Management & Special Opportunities',
-        'Mergers & Acquisitions',
-        'Private Credit',
-        'Private Equity',
-        'Private Wealth',
-        'Public Company Advisory',
-        'Real Estate',
-        'Restructuring',
-        'Shareholder Activism Defense',
-        'Sponsor Finance',
-        'Tax',
-        'White Collar Defense & Investigations'
-    ]
-    
-    # Also create variations for matching (lowercase, without special characters)
-    practice_variations = {}
-    for practice in official_practice_areas:
-        # Create normalized versions for matching
-        normalized = practice.lower().replace('&', 'and').replace(' ', '')
-        practice_variations[normalized] = practice
-        # Also add version with just spaces removed
-        practice_variations[practice.lower()] = practice
-        # Add version with & as 'and'
-        if '&' in practice:
-            practice_variations[practice.lower().replace('&', 'and')] = practice
-    
-    # Add special abbreviations
-    practice_variations['m&a'] = 'Mergers & Acquisitions'
-    practice_variations['manda'] = 'Mergers & Acquisitions'
-    practice_variations['ip litigation'] = 'IP Litigation'
-    practice_variations['ip commercial'] = 'IP & Commercial Transactions'
-    
-    # Look for "Capabilities" section which is Davis Polk specific
-    capabilities_start = False
-    capabilities_end = False
-    found_practices = set()  # Use set to avoid duplicates
-    
-    for i, line in enumerate(cleaned_lines):
-        if 'Capabilities' in line:
-            capabilities_start = True
-            continue
-        
-        # Stop when we hit another major section
-        if capabilities_start and any(section in line for section in 
-                                     ['Experience', 'Education', 'Insights', 'View more', 
-                                      'Clerkship', 'Qualifications', 'Languages', 'Prior experience']):
-            capabilities_end = True
-        
-        if capabilities_start and not capabilities_end:
-            # Clean the line
-            if line and len(line) < 100:
-                # Skip navigation, action items, and regions
-                if not any(skip in line.lower() for skip in 
-                          ['view', 'see more', 'download', 'print', 'back to', 
-                           'address card']):
-                    # Skip if it's just a region name
-                    if line not in ['Asia', 'China', 'Japan', 'Europe', 'Latin America', 'Israel']:
-                        # Check if line matches any official practice area
-                        line_normalized = line.lower().replace('&', 'and').replace(' ', '')
-                        line_lower = line.lower()
-                        
-                        # First try exact match with official names
-                        if line in official_practice_areas:
-                            found_practices.add(line)
-                        # Then try normalized matching
-                        elif line_normalized in practice_variations:
-                            found_practices.add(practice_variations[line_normalized])
-                        elif line_lower in practice_variations:
-                            found_practices.add(practice_variations[line_lower])
-                        # Handle special cases
-                        elif 'M&A' in line or 'Mergers' in line:
-                            found_practices.add('Mergers & Acquisitions')
-                        elif 'IP' in line and 'Litigation' in line:
-                            found_practices.add('IP Litigation')
-                        elif 'IP' in line and 'Commercial' in line:
-                            found_practices.add('IP & Commercial Transactions')
-                        elif 'White Collar' in line:
-                            found_practices.add('White Collar Defense & Investigations')
-                        elif 'Liability Management' in line:
-                            found_practices.add('Liability Management & Special Opportunities')
-    
-    # Convert set to list
-    result['practice_type'] = list(found_practices) if found_practices else []
-    
-    # Parse Industries
-    # Define the official Davis Polk industries
-    official_industries = [
-        'Artificial Intelligence',
-        'Cleantech',
-        'Consumer Products & Retail',
-        'Data Centers & Digital Infrastructure',
-        'Energy, Power & Infrastructure',
-        'Fintech & Cryptocurrency',
-        'Healthcare & Life Sciences',
-        'Industrials',
-        'Sports',
-        'Tech, Media & Telecom'
-    ]
-    
-    # Create variations for matching
-    industry_variations = {}
-    for industry in official_industries:
-        # Create normalized versions for matching
-        normalized = industry.lower().replace('&', 'and').replace(' ', '')
-        industry_variations[normalized] = industry
-        # Also add version with just lowercase
-        industry_variations[industry.lower()] = industry
-        # Add version with & as 'and'
-        if '&' in industry:
-            industry_variations[industry.lower().replace('&', 'and')] = industry
-    
-    # Add common variations and abbreviations
-    industry_variations['ai'] = 'Artificial Intelligence'
-    industry_variations['artificial intelligence'] = 'Artificial Intelligence'
-    industry_variations['cleantech'] = 'Cleantech'
-    industry_variations['clean technology'] = 'Cleantech'
-    industry_variations['consumer products'] = 'Consumer Products & Retail'
-    industry_variations['retail'] = 'Consumer Products & Retail'
-    industry_variations['consumer'] = 'Consumer Products & Retail'
-    industry_variations['data centers'] = 'Data Centers & Digital Infrastructure'
-    industry_variations['digital infrastructure'] = 'Data Centers & Digital Infrastructure'
-    industry_variations['energy'] = 'Energy, Power & Infrastructure'
-    industry_variations['power'] = 'Energy, Power & Infrastructure'
-    industry_variations['infrastructure'] = 'Energy, Power & Infrastructure'
-    industry_variations['energy power infrastructure'] = 'Energy, Power & Infrastructure'
-    industry_variations['fintech'] = 'Fintech & Cryptocurrency'
-    industry_variations['cryptocurrency'] = 'Fintech & Cryptocurrency'
-    industry_variations['crypto'] = 'Fintech & Cryptocurrency'
-    industry_variations['healthcare'] = 'Healthcare & Life Sciences'
-    industry_variations['life sciences'] = 'Healthcare & Life Sciences'
-    industry_variations['pharmaceutical'] = 'Healthcare & Life Sciences'
-    industry_variations['pharmaceuticals'] = 'Healthcare & Life Sciences'
-    industry_variations['pharma'] = 'Healthcare & Life Sciences'
-    industry_variations['biotech'] = 'Healthcare & Life Sciences'
-    industry_variations['biotechnology'] = 'Healthcare & Life Sciences'
-    industry_variations['medical'] = 'Healthcare & Life Sciences'
-    industry_variations['industrials'] = 'Industrials'
-    industry_variations['industrial'] = 'Industrials'
-    industry_variations['manufacturing'] = 'Industrials'
-    industry_variations['sports'] = 'Sports'
-    industry_variations['tech'] = 'Tech, Media & Telecom'
-    industry_variations['technology'] = 'Tech, Media & Telecom'
-    industry_variations['media'] = 'Tech, Media & Telecom'
-    industry_variations['telecom'] = 'Tech, Media & Telecom'
-    industry_variations['telecommunications'] = 'Tech, Media & Telecom'
-    industry_variations['tmt'] = 'Tech, Media & Telecom'
-    
-    # Look for industries ONLY in the Capabilities section
-    found_industries = set()
-    
-    # First check the Capabilities section
-    capabilities_section = False
-    for i, line in enumerate(cleaned_lines):
-        if 'Capabilities' in line:
-            capabilities_section = True
-            continue
-        
-        # Stop at next major section
-        if capabilities_section and any(section in line for section in 
-                                      ['Experience', 'Education', 'Languages', 
-                                       'Prior experience', 'Qualifications']):
-            capabilities_section = False
-        
-        if capabilities_section and line:
-            # Skip navigation items
-            if not any(skip in line.lower() for skip in 
-                      ['view', 'see more', 'download', 'print', 'back to']):
-                # Check if line matches any official industry
-                line_normalized = line.lower().replace('&', 'and').replace(', ', ' ')
-                line_lower = line.lower()
-                
-                # Try exact match with official names
-                if line in official_industries:
-                    found_industries.add(line)
-                # Try normalized matching
-                elif line_normalized in industry_variations:
-                    found_industries.add(industry_variations[line_normalized])
-                elif line_lower in industry_variations:
-                    found_industries.add(industry_variations[line_lower])
-                # Special handling for compound terms
-                elif 'energy' in line_lower and 'power' in line_lower:
-                    found_industries.add('Energy, Power & Infrastructure')
-                elif 'data center' in line_lower:
-                    found_industries.add('Data Centers & Digital Infrastructure')
-                elif 'life science' in line_lower or 'healthcare' in line_lower:
-                    found_industries.add('Healthcare & Life Sciences')
-                elif 'consumer' in line_lower and 'product' in line_lower:
-                    found_industries.add('Consumer Products & Retail')
-    
-    # Convert set to list
-    result['industry'] = list(found_industries) if found_industries else []
-    
+    # Parse Practice Areas - Search entire page for exact matches from valid set
+    result['practice_type'] = extract_from_valid_set(text_content, VALID_PRACTICES)
+
+    # Parse Industries - Search entire page for exact matches from valid set
+    result['industry'] = extract_from_valid_set(text_content, VALID_INDUSTRIES)
+
     # Parse Education/School
     education_section = False
     for i, line in enumerate(cleaned_lines):
