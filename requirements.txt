@@ -1,0 +1,6 @@
+openai
+lxml
+beautifulsoup4
+requests
+numpy
+tqdm

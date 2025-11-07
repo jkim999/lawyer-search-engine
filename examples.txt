@@ -1,0 +1,517 @@
+Example text from scrape:
+"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      Skip to main content
+    
+
+Top of page
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Davis Polk
+
+
+
+
+
+
+
+Lawyers
+
+
+Capabilities
+
+
+
+
+
+
+            Insights
+          
+
+
+
+Client Updates
+
+
+Webinars & CLE Programs
+
+
+Receive insights from Davis Polk
+
+
+Resource Centers
+
+
+The New Trump Administration
+
+
+Crypto Regulation Hub
+
+
+Future of UK Capital Markets
+
+
+
+
+
+Offices
+
+
+
+
+
+
+            About Us
+          
+
+
+
+Overview
+
+
+Business Services Leadership
+
+
+Inclusion
+
+
+Pro Bono
+
+
+Sustainability 
+
+
+Experience
+
+
+News
+
+
+Contact
+
+
+
+
+
+
+
+
+
+            Careers
+          
+
+
+
+Overview
+
+
+Law Students & Trainees
+
+
+Laterals & Clerks
+
+
+Paralegals
+
+
+Business Professionals
+
+
+Benefits & Wellness
+
+
+
+
+
+Alumni
+
+
+
+
+
+
+
+
+
+
+Search
+
+
+
+
+
+
+
+
+
+
+Clear
+
+|
+
+
+Search
+
+
+
+Find lawyers by capability, office or title
+
+
+See all results for ""
+
+
+
+
+
+
+
+ 
+
+
+
+
+  Lawyers
+
+
+Alon Gurfinkel
+
+
+
+      Lawyers
+    
+
+
+ 
+
+
+
+Alon Gurfinkel
+
+Counsel
+
+            Tax
+          
+
+London
+
+alon.gurfinkel@davispolk.com
+
++44 20 7418 1370
+
+
+
+Download address card
+
+
+
+Print this page
+
+
+
+
+
+
+
+
+
+
+Advises clients on U.S. tax aspects of cross-border transactions, including M&A, securities offerings and financings, with a focus on European and Asian markets.
+
+Alon leads our U.S. tax practice in London. He advises clients on the U.S. tax aspects of their global transactions, including cross-border mergers, acquisitions and migrations, international tax planning, securities offerings and financing agreements. He also advises major financial institutions on complex structured products offerings. Private equity funds seek Alon’s advice in connection with their portfolio investments in non-U.S. companies.Alon is admitted to the New York State Bar. A member of our Israel practice, Alon is fluent in Hebrew and is admitted to the Israel Bar.
+
+
+
+
+Capabilities
+
+
+                      Tax
+                    
+
+
+
+                        Europe
+                      
+
+
+
+                        Israel
+                      
+
+ 
+
+
+Capabilities
+
+
+
+
+
+
+                        Tax
+                      
+
+
+
+                            Europe
+                          
+
+
+
+                            Israel
+                          
+
+
+  
+
+Languages
+
+                      Hebrew
+                    
+ 
+
+
+Languages
+
+
+
+
+
+                        Hebrew
+                      
+
+ 
+ 
+
+
+Experience
+
+
+
+
+Banco Bilbao Vizcaya Argentaria on its $1 billion SEC-registered preferred notes offering
+Banco Santander on its $2.5 billion senior notes offering
+Dealers and joint lead managers on the Emirate of Abu Dhabi’s $10 billion notes offering
+Dealers on the $25 billion MTN program updates and $1.5 billion senior non-preferred notes offering by Societe Generale
+Initial purchasers on its $2 billion high-yield notes offering of China Evergrande
+Joint bookrunners on the $1.6 billion notes offering by Diageo Capital
+Joint bookrunners on its $1 billion notes offering and cash tender offer of Gold Fields
+Joint bookrunners in connection with an SEC-registered offering of $1.5 billion aggregate principal amount of perpetual additional tier 1 contingent convertible capital securities of ING Group
+Joint bookrunners on an SEC-registered €700 million notes offering by Westlake Chemical
+Joint lead managers on Bangkok Bank Public Company’s $1.2 billion notes offering
+Joint lead managers on its Toyota Motor $1.5 billion senior notes offering
+Morgan Stanley in connection with its SEC-registered global offering of $2 billion aggregate senior notes
+Nederlandse Waterschapsbank Bank on its $60 billion debt issuance program update
+Sumitomo Mitsui Financial on its $2 billion aggregate SEC-registered notes offerings
+Tencent:
+
+on its strategic investment in JD.com
+on its $6 billion notes offering under its global MTN program
+
+
+The Metropolis of Tokyo on its $1 billion bond offering
+The Royal Bank of Scotland on its $1.25 billion notes offering
+Underwriters on the IPO and Nasdaq listing of 9F
+Underwriters in connection with a $3.5 billion aggregate SEC-registered notes offering of British American Tobacco
+Underwriters on the $648 million IPO of Datadog
+
+
+
+
+
+View more experience
+
+
+
+
+Education
+
+
+LL.M., Tax, New York University School of Law
+
+Rudick Award
+
+
+
+
+B.A., Economics, Tel Aviv University
+
+
+
+LL.B., Tel Aviv University, Buchmann Faculty of Law
+
+magna cum laude
+
+
+
+
+
+
+Prior experience
+Associate, Herzog Fox & Neeman, 2000-2004
+
+
+
+Qualifications and admissions
+
+Israel Bar
+State of New York
+
+
+Not admitted in England & Wales
+
+
+
+
+Back to top
+
+
+
+
+
+
+
+
+
+
+
+
+
+Davis Polk
+
+
+
+
+
+Explore
+
+
+Lawyers
+
+
+Capabilities
+
+
+Insights
+
+
+Experience
+
+
+Offices
+
+
+Archive
+
+
+
+
+Connect
+
+
+Careers
+
+
+Alumni
+
+
+LinkedIn
+
+
+Contact
+
+
+
+
+Legal
+
+
+Privacy Notice
+
+
+Careers Privacy Notice
+
+
+Disclaimer & Notices
+
+
+Cookie Policy
+
+
+Cookie Settings
+
+
+
+
+Subscribe
+
+
+Receive insights from Davis Polk
+
+
+
+
+
+
+© 2025 Davis Polk & Wardwell LLPAttorney Advertising. Prior results do not guarantee a similar outcome.
+
+
+
+
+
+
+
+"
+
+Example ouput from parse_text:
+{'name': 'Alon Gurfinkel', 'email': 'alon.gurfinkel@davispolk.com', 'phone': '+44 20 7418 1370', 'office_location': 'New York', 'practice_type': None, 'industry': None, 'region': ['Europe', 'Israel'], 'title': 'Counsel', 'school': ['LL.M., Tax, New York University School of Law', 'B.A., Economics, Tel Aviv University', 'LL.B., Tel Aviv University, Buchmann Faculty of Law'], 'clerkship': None, 'language': ['Hebrew']}
