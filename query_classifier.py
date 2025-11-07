@@ -82,20 +82,23 @@ Classify queries into two categories:
 SIMPLE queries - can be answered with direct database lookups:
 - Name searches: "lawyers named John", "John Smith"
 - Title searches: "partners", "associates", "counsel"
-- School searches: "went to Yale", "graduated from Harvard"
+- School searches: "went to Yale", "graduated from Harvard", "attended Stanford"
 - Practice area searches: "tax lawyers", "lawyers in corporate"
-- Language searches: "lawyers who speak Spanish"
-- Graduation year: "graduated after 2015"
-- Location/region: "lawyers in Asia", "London office"
-- Combinations of the above: "partners who went to Yale"
+- Language searches: "lawyers who speak Spanish", "French-speaking lawyers"
+- Graduation year comparisons: "graduated after 2015", "graduated before 2020", "graduated in 2018"
+- Location/region: "lawyers in Asia", "London office", "New York partners"
+- Combinations of the above: "partners who went to Yale", "tax lawyers who speak Spanish"
+
+IMPORTANT: Date comparisons (after, before, in + year) are ALWAYS simple queries.
 
 COMPLEX queries - require understanding context and searching through unstructured text:
 - Experience with specific companies: "worked with Google", "represented Apple"
 - Industry expertise: "lawyers who worked on a case for a TV network"
-- Deal types: "handled IPOs", "worked on mergers"
+- Deal types: "handled IPOs", "worked on mergers", "M&A experience"
 - Specific legal work: "defended pharmaceutical companies", "prosecuted antitrust cases"
+- Case types: "worked on litigation", "handled patent disputes"
 - Contextual understanding: "lawyers who helped tech startups go public"
-- Any query requiring inference: "lawyers experienced with streaming services" (requires knowing Netflix/Hulu are streaming services)
+- Any query requiring inference: "lawyers experienced with streaming services"
 
 Respond with only one word: 'simple' or 'complex'"""
 

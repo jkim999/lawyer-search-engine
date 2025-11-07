@@ -367,7 +367,8 @@ if __name__ == '__main__':
     parser.add_argument('--force', action='store_true', help='Force re-scraping even if lawyer exists')
     parser.add_argument('--cleanup-names', action='store_true', help='Clean up lawyers with invalid names (e.g., "Print this page")')
     parser.add_argument('--generate-embeddings', action='store_true', help='Generate embeddings for all lawyer experiences')
-    
+    parser.add_argument('--no-cache', action='store_true', help='Disable query result caching (useful for demos with diverse queries)')
+
     args = parser.parse_args()
     
     # Handle --warm flag
@@ -411,26 +412,28 @@ if __name__ == '__main__':
     # Handle query
     if args.query:
         # Single query mode
-        results = main(args.query, args.db, args.why, args.format)
+        use_cache = not args.no_cache
+        results = main(args.query, args.db, args.why, args.format, use_cache)
         print(format_results(results, args.format))
     else:
         # Interactive query loop (Level 2)
         print("Davis Polk Lawyer Search System")
         print("Enter queries, or 'quit' to exit")
         print("=" * 80)
-        
+
         while True:
             try:
                 query = input("\nEnter your search query: ").strip()
-                
+
                 if not query:
                     continue
-                
+
                 if query.lower() in ['quit', 'exit', 'q']:
                     print("Goodbye!")
                     break
-                
-                results = main(query, args.db, args.why, args.format)
+
+                use_cache = not args.no_cache
+                results = main(query, args.db, args.why, args.format, use_cache)
                 print(format_results(results, args.format))
                 
             except KeyboardInterrupt:
