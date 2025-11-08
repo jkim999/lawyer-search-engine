@@ -39,12 +39,12 @@ def init_database(db_path: str = 'lawyers.db') -> sqlite3.Connection:
     ''')
     
     # Educations table - normalized education entries
+    # Note: year column removed - Davis Polk does not publish graduation years
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS educations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             lawyer_id INTEGER NOT NULL,
             degree_type TEXT,
-            year INTEGER,
             school_name TEXT,
             school_normalized TEXT,
             is_law_degree INTEGER DEFAULT 0,
@@ -128,15 +128,12 @@ def create_indexes(conn: sqlite3.Connection):
         conn: Database connection
     """
     cursor = conn.cursor()
-    
+
     # Regular indexes
+    # Note: year index removed - graduation years not available from Davis Polk
+
     cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_educations_lawyear 
-        ON educations(year) WHERE is_law_degree=1
-    ''')
-    
-    cursor.execute('''
-        CREATE INDEX IF NOT EXISTS idx_educations_school 
+        CREATE INDEX IF NOT EXISTS idx_educations_school
         ON educations(school_normalized)
     ''')
     

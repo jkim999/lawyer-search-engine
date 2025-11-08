@@ -11,30 +11,31 @@ from llm_utils import get_embedding, EMBEDDING_MODEL_SMALL
 
 def degree_tokenizer(education_line: str) -> Dict[str, Any]:
     """
-    Parse education entry with context window to extract degree, year, school, and honors.
-    Uses context to associate years with correct degrees.
-    
+    Parse education entry to extract degree, school, and honors.
+
+    Note: Davis Polk website does not publish graduation years (common practice
+    to avoid age discrimination), so year is not extracted.
+
     Args:
-        education_line: Raw education line (e.g., "J.D., 2016, Yale Law School" or "LL.M., Tax, New York University School of Law")
-        
+        education_line: Raw education line (e.g., "J.D., Yale Law School" or "LL.M., Tax, New York University School of Law")
+
     Returns:
-        Dictionary with degree_type, year, school_name, honors, is_law_degree
+        Dictionary with degree_type, school_name, honors, is_law_degree
     """
     result = {
         'degree_type': None,
-        'year': None,
         'school_name': None,
         'honors': None,
         'is_law_degree': 0
     }
-    
+
     # Common degree patterns
     law_degrees = ['J.D.', 'LL.M.', 'LL.B.', 'J.D', 'LL.M', 'LL.B']
     undergrad_degrees = ['B.A.', 'B.S.', 'A.B.', 'B.A', 'B.S', 'A.B']
     grad_degrees = ['M.A.', 'M.S.', 'MBA', 'Ph.D.', 'M.A', 'M.S', 'Ph.D']
-    
+
     all_degrees = law_degrees + undergrad_degrees + grad_degrees
-    
+
     # Find degree type
     degree_type = None
     for degree in all_degrees:
@@ -44,23 +45,12 @@ def degree_tokenizer(education_line: str) -> Dict[str, Any]:
             if degree in law_degrees:
                 result['is_law_degree'] = 1
             break
-    
-    # Extract year (4-digit, 1900-2099)
-    year_pattern = r'\b(19|20)\d{2}\b'
-    year_matches = list(re.finditer(year_pattern, education_line))
-    
-    if year_matches:
-        # Take the first year found (most likely the graduation year)
-        year_str = year_matches[0].group(0)
-        result['year'] = int(year_str)
-    
+
     # Extract school name - look for University, College, School, Institute
-    # Remove degree and year from the line first
+    # Remove degree from the line first
     cleaned = education_line
     if degree_type:
         cleaned = cleaned.replace(degree_type + '.', '').replace(degree_type, '')
-    if result['year']:
-        cleaned = cleaned.replace(str(result['year']), '')
     
     # Remove common separators and extra words
     cleaned = re.sub(r'^[,\s]+', '', cleaned)  # Remove leading commas/spaces
@@ -242,12 +232,11 @@ def scrape_and_cache_lawyers(csv_file: str = 'lawyers.csv',
             for edu in educations:
                 cursor.execute('''
                     INSERT INTO educations
-                    (lawyer_id, degree_type, year, school_name, school_normalized,
+                    (lawyer_id, degree_type, school_name, school_normalized,
                      is_law_degree, honors, full_text)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (lawyer_id,
                       edu.get('degree_type'),
-                      edu.get('year'),
                       edu.get('school_name'),
                       edu.get('school_normalized'),
                       edu.get('is_law_degree', 0),
