@@ -1,4 +1,5 @@
 from openai import OpenAI
+import os
 
 # Constants
 PRIMARY_MODEL = 'gpt-4.1'
