@@ -1,86 +1,56 @@
-# Davis Polk Lawyer Query Challenge
+Davis Polk Lawyer Search Engine
+A high-performance search tool for querying lawyers on the Davis Polk website with natural language queries and advanced filtering capabilities.
+Overview
+Davis Polk & Wardwell LLP is a prestigious international law firm with approximately 1,000 lawyers. This project provides an intelligent search interface to query their lawyer directory using natural language, supporting complex filters and criteria.
+Website: https://www.davispolk.com/
+Features
 
-## Introduction
+Natural Language Queries: Search using conversational language instead of complex filters
+Complex Criteria Support: Filter by education, case history, clerkships, practice areas, and more
+Low Latency: Optimized for fast response times with streaming results
+Multi-Query Support: Handle multiple consecutive queries efficiently
 
-Davis Polk is a big law firm with ~1000 lawyers. Here is their website: https://www.davispolk.com/
+Example Queries
+The tool supports a wide range of search criteria:
 
-The goal is to develop a tool that can search for lawyers on their website with extreme specificity.
+"Lawyers named David"
+"Lawyers who went to Yale"
+"Lawyers who worked on a case with a TV network"
+"Lawyers who clerked for the Supreme Court"
+"Lawyers who graduated law school after 2015"
+"Lawyers who have represented pharmaceutical companies"
 
-## Task Description
+Project Structure
+├── README.md              # Project documentation
+├── requirements.txt       # Python dependencies
+├── main.py               # Main application entry point
+├── llm_utils.py          # LLM integration utilities
+├── scraping_utils.py     # Web scraping utilities
+└── lawyers.csv           # Lawyer data (if cached)
+Installation
 
-We want to create a program that can query the lawyers on the Davis Polk website and filter them based on a specific query.
+Clone the repository
 
-### Example queries that you should be able to support:
-- Lawyers named David
-- Lawyers who went to Yale
-- Lawyers who worked on a case with a TV network
-- Lawyers who clerked for the Supreme Court
-- Lawyers who graduated law school after 2015
-- Lawyers who have represented pharmaceutical companies
-... and so on.
+Install dependencies
 
-## Constraints
-- Latency is **extremely** important. Not only time until all results are returned, but also time until the first result is returned.
-- You must be able to query multiple queries back-to-back quickly.
+bash   pip install -r requirements.txt
 
-## Level 1: Support one query
+Set up API keys (if required)
 
-Your task is to write a program that returns a list of all lawyers who have **worked on a case with a TV network.**
+bash   export OPENAI_API_KEY="your-api-key-here"
+Usage
+Run the main program:
+bashpython main.py
+The program will prompt you to enter search queries. Type your query in natural language and press Enter.
 
-## Level 2: Support multiple queries
 
-You now have a while loop, where you can keep querying the program with new queries.
+Query Complexity Detection: Simple queries return faster than complex ones
+Embedding-Based Search: Semantic similarity for efficient matching
+Keyword Ranking: Fast filtering using keyword extraction
+Hybrid Search: Combination of keyword and semantic search
 
-## Level 3: Latency optimizations
+Technology Stack
 
-For example, "lawyers who went to Yale" is a much simpler query than "lawyers who worked on a case for a TV network". It should thus be faster.
-
-Consider how embeddings could be used. Consider how keywords/keyword ranking could be used.
-
-Extensions:
-- Hybrid search
-- Hybrid search -> Reranker model (like Cohere)
-
-### Expected Output
-Your program should produce a list or file containing the names and relevant information of lawyers who meet the criteria.
-
-## Setup and Running the Code
-
-1. Clone this repository to your local machine.
-2. Install the required dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Run the main program:
-   ```
-   python main.py
-   ```
-
-## Requirements and Constraints
-
-- Use Python for your implementation.
-- You may use any libraries listed in the `requirements.txt` file.
-- Feel free to use Cursor, ChatGPT, internet, etc.
-- In fact, please use Cursor. This will make it much faster for you to build this
-- Efficiency and latency are extremely important.
-
-## Ideas of directions to go in
-- Make the prompt better. Create benchmarks, test it, etc.
-- Pre-process the profiles (convert to JSON maybe, clean the useless text)
-- Pre-process the prompts
-
-## Miscellaneous
-I made an OpenAI key just for this interview with a pretty low daily limit. If you run out of credits, feel free to reach out to me at david@noon.ai, and I'll try to respond ASAP.
-
-Also, feel free to use any other LLM API. Gemini 2.5 Flash is **extremely** good and very cheap. I just used OpenAI for this assignment for the sake of simplicity.
-
-## Provided Files
-
-- `README.md`: This file, containing challenge instructions.
-- `requirements.txt`: List of required Python packages.
-- `main.py`: The main script to run your program.
-- `llm_utils.py`: Utility functions for working with language models (if applicable).
-- `scraping_utils.py`: Utility functions for web scraping.
-- `lawyers.csv`: A CSV file containing initial lawyer data (if provided).
-
-Good luck! 🚀
+Language: Python 3.8+
+LLM Options: OpenAI GPT, Google Gemini 2.5 Flash, or similar
+Search Methods: Embeddings, keyword extraction, hybrid approaches
