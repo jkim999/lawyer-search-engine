@@ -5,10 +5,9 @@ PRIMARY_MODEL = 'gpt-4.1'
 MINI_MODEL = 'gpt-4.1-mini'
 EMBEDDING_MODEL_LARGE = "text-embedding-3-large"
 EMBEDDING_MODEL_SMALL = "text-embedding-3-small"
-OPENAI_KEY = None
 
 # Initialize OpenAI client
-openai_client = OpenAI(api_key=OPENAI_KEY)
+openai_client = OpenAI(api_key=os.getenv('OPENAI_KEY'))
 
 
 def get_embedding(texts, size=EMBEDDING_MODEL_SMALL):
