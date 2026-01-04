@@ -113,15 +113,69 @@ def extract_from_valid_set(text: str, valid_set: set) -> List[str]:
     return found
 
 
-def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
+def extract_name_from_url(url: str) -> Optional[str]:
+    """
+    Extract lawyer name from Davis Polk URL.
+
+    Davis Polk URLs follow pattern: https://www.davispolk.com/lawyers/john-smith
+    This is the most reliable source for the lawyer's name.
+
+    Args:
+        url: The Davis Polk lawyer profile URL
+
+    Returns:
+        Extracted name or None if URL doesn't match expected pattern
+
+    Examples:
+        'https://www.davispolk.com/lawyers/robert-fiske-jr' -> 'Robert Fiske Jr'
+        'https://www.davispolk.com/lawyers/katharine-obanion' -> 'Katharine OBanion'
+    """
+    if not url:
+        return None
+
+    # Extract the slug from the URL (last part after /lawyers/)
+    match = re.search(r'/lawyers/([a-z0-9\-]+)/?$', url.lower())
+    if not match:
+        return None
+
+    slug = match.group(1)
+
+    # Convert slug to name: split on hyphens, capitalize each part
+    parts = slug.split('-')
+
+    # Capitalize each part, handling special cases
+    name_parts = []
+    for part in parts:
+        # Handle roman numerals (keep uppercase)
+        if part in ['ii', 'iii', 'iv', 'v', 'vi']:
+            name_parts.append(part.upper())
+        # Handle suffixes
+        elif part in ['jr', 'sr']:
+            name_parts.append(part.capitalize())
+        # Handle single letters (middle initials)
+        elif len(part) == 1:
+            name_parts.append(part.upper())
+        # Handle names with apostrophes (O'Brien, etc.)
+        elif "'" in part:
+            name_parts.append(part.title())
+        # Regular capitalization
+        else:
+            name_parts.append(part.capitalize())
+
+    return ' '.join(name_parts)
+
+
+def parse_text(scraped_content: str, url: Optional[str] = None) -> Dict[str, Union[str, List[str], None]]:
     """
     Parse Davis Polk lawyer profile information from scraped content.
-    
+
     Parameters:
     -----------
     scraped_content : str
         The raw HTML or text content scraped from a Davis Polk lawyer profile page
-        
+    url : str, optional
+        The URL of the lawyer's profile page (used for reliable name extraction)
+
     Returns:
     --------
     dict : Dictionary containing parsed information with the following keys:
@@ -191,7 +245,20 @@ def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
         'skip to main content', 'top of page', 'receive insights',
         'subscribe', 'explore', 'connect', 'legal', 'privacy notice',
         'cookie policy', 'cookie settings', 'attorney advertising',
-        'prior results do not guarantee', 'davis polk', 'davis polk & wardwell'
+        'prior results do not guarantee', 'davis polk', 'davis polk & wardwell',
+        # Title keywords - these are titles, not names!
+        'managing partner', 'senior partner', 'senior counsel', 'of counsel',
+        'partner', 'counsel', 'associate', 'co-head', 'head',
+        # Office locations (from VALID_OFFICES) - prevent office names from being parsed as names
+        'new york', 'northern california', 'washington dc', 'são paulo',
+        'london', 'brussels', 'madrid', 'hong kong', 'beijing', 'tokyo',
+        # Regions (from VALID_REGIONS)
+        'asia', 'china', 'japan', 'europe', 'latin america', 'israel',
+        # Common honors and achievements - often appear before title
+        'order of the coif', 'magna cum laude', 'summa cum laude', 'cum laude',
+        'phi beta kappa', 'with honors', 'with distinction', 'high honors',
+        # Other non-name items
+        'admitted to practice', 'bar admission', 'law review', 'moot court',
     }
     
     def is_valid_name(name: str) -> bool:
@@ -235,27 +302,15 @@ def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
         
         return True
     
-    # Parse Name and Title (Davis Polk specific pattern)
-    # Name typically appears before title in Davis Polk profiles
-    for i, line in enumerate(cleaned_lines):
-        if line in title_keywords or any(keyword in line for keyword in title_keywords):
-            # Set title
-            if not result['title']:
-                for keyword in title_keywords:
-                    if keyword in line:
-                        result['title'] = keyword
-                        break
-            
-            # Check previous lines for name
-            if i > 0 and not result['name']:
-                potential_name = cleaned_lines[i-1]
-                if is_valid_name(potential_name):
-                    result['name'] = potential_name
-    
-    # Fallback name parsing using pattern matching
-    # Look for name pattern near email or phone (more reliable indicators)
+    # Parse Name - Use multiple strategies in order of reliability
+    # Strategy 0 (MOST RELIABLE): Extract from URL
+    # Davis Polk URLs follow pattern: /lawyers/robert-fiske-jr
+    # This is the most reliable source and avoids all HTML parsing issues
+    if url:
+        result['name'] = extract_name_from_url(url)
+
+    # Strategy 1: Find name near email
     if not result['name']:
-        # First try to find name near email (most reliable)
         email_pattern = r'[a-zA-Z0-9._%+-]+@davispolk\.com'
         for i, line in enumerate(cleaned_lines):
             if re.search(email_pattern, line, re.IGNORECASE):
@@ -266,16 +321,37 @@ def parse_text(scraped_content: str) -> Dict[str, Union[str, List[str], None]]:
                         break
                 if result['name']:
                     break
-        
-        # If still not found, try pattern matching in first 30 lines, but with stricter validation
-        if not result['name']:
-            name_pattern = r'([A-Z][a-z]+(?:\s+[A-Z]\.?\s*)?(?:\s+[A-Z][a-z]+)+)'
-            for line in cleaned_lines[:30]:
-                name_match = re.search(r'^' + name_pattern + r'$', line)
-                if name_match:
-                    potential_name = name_match.group(1).strip()
+
+    # Strategy 2: Try pattern matching in first 30 lines
+    if not result['name']:
+        name_pattern = r'([A-Z][a-z]+(?:\s+[A-Z]\.?\s*)?(?:\s+[A-Z][a-z]+)+)'
+        for line in cleaned_lines[:30]:
+            name_match = re.search(r'^' + name_pattern + r'$', line)
+            if name_match:
+                potential_name = name_match.group(1).strip()
+                if is_valid_name(potential_name):
+                    result['name'] = potential_name
+                    break
+
+    # Strategy 3 (LEAST RELIABLE): Look for line before title
+    # This is last resort because it often captures honors/locations instead of names
+    if not result['name']:
+        for i, line in enumerate(cleaned_lines):
+            if line in title_keywords or any(keyword in line for keyword in title_keywords):
+                # Check previous lines for name
+                if i > 0:
+                    potential_name = cleaned_lines[i-1]
                     if is_valid_name(potential_name):
                         result['name'] = potential_name
+                        break
+
+    # Parse Title (independent of name parsing)
+    for i, line in enumerate(cleaned_lines):
+        if line in title_keywords or any(keyword in line for keyword in title_keywords):
+            if not result['title']:
+                for keyword in title_keywords:
+                    if keyword in line:
+                        result['title'] = keyword
                         break
     
     # Parse Email

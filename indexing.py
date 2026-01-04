@@ -212,7 +212,7 @@ def scrape_and_cache_lawyers(csv_file: str = 'lawyers.csv',
         try:
             # Scrape and parse
             raw_html = parse_page(url)
-            parsed_data = parse_text(raw_html)
+            parsed_data = parse_text(raw_html, url=url)
             
             # Store raw HTML if requested
             html_bytes = raw_html.encode('utf-8') if store_html else None
